@@ -2,11 +2,10 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
-# Import everything moved to the classic package here
+# Using langchain_classic to maintain compatibility with AgentExecutor and create_react_agent
 from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_classic import hub 
 from langchain_core.tools import Tool
-
 
 # --- Page Setup ---
 st.set_page_config(page_title="Agentic Coder", page_icon="💻")
@@ -18,7 +17,7 @@ with st.sidebar:
     st.header("Settings")
     user_api_key = st.text_input("Enter Gemini API Key", type="password")
     st.info("Your key is used only for this session and is not stored.")
-    st.markdown("[Get a free API key here](https://aistudio.google.com/app/apikey)")
+    st.markdown("[Get a free API key here](https://aistudio.google.com)")
 
 # --- Tool Definition: The Python Sandbox ---
 def execute_python_code(code: str) -> str:
@@ -26,7 +25,7 @@ def execute_python_code(code: str) -> str:
     output = io.StringIO()
     try:
         sys.stdout = output
-        # Use a dictionary for local/global scope
+        # Use a dictionary for local/global scope to keep the environment clean
         exec(code, {})
         sys.stdout = sys.__stdout__
         result = output.getvalue()
@@ -38,7 +37,7 @@ def execute_python_code(code: str) -> str:
 # --- Agent Initialization ---
 if user_api_key:
     try:
-        # 1. Initialize LLM
+        # 1. Initialize LLM - Using gemini-1.5-flash (Ensure the langchain-google-genai package is updated)
         llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash", 
             google_api_key=user_api_key,
@@ -54,7 +53,7 @@ if user_api_key:
             )
         ]
 
-        # 3. Pull the standard ReAct prompt from LangChain Hub
+        # 3. Pull the standard ReAct prompt from LangChain Hub via classic package
         prompt = hub.pull("hwchase17/react")
 
         # 4. Construct the ReAct agent
@@ -81,7 +80,7 @@ if user_api_key:
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking and coding..."):
-                    # Use .invoke() as per the [LangChain Runnable Interface](https://python.langchain.com)
+                    # Use .invoke() for the modern LangChain API interface
                     response = agent_executor.invoke({"input": user_query})
                     answer = response["output"]
                     st.write(answer)
