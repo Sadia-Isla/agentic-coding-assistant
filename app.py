@@ -1,54 +1,91 @@
 import streamlit as st
-import os
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import initialize_agent, Tool
 import sys
 import io
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain_core.tools import Tool
+from langchain import hub
 
-# --- Page Config ---
-st.set_page_config(page_title="Agentic Coder", page_icon="🤖")
-st.title("🤖 Agentic Coder")
-st.caption("An autonomous AI that writes and tests Python code.")
+# --- Page Setup ---
+st.set_page_config(page_title="Agentic Coder", page_icon="💻")
+st.title("💻 Agentic Coder")
+st.markdown("An autonomous Python agent that writes and tests its own code.")
 
-# --- API Key Handling ---
-# This allows users to use their own key (Safe for your wallet!)
+# --- Sidebar: User API Key ---
 with st.sidebar:
-    user_api_key = st.text_input("Enter Google API Key", type="password")
-    "[Get a free Gemini API key](https://aistudio.google.com/app/apikey)"
+    st.header("Settings")
+    user_api_key = st.text_input("Enter Gemini API Key", type="password")
+    st.info("Your key is used only for this session and is not stored.")
+    st.markdown("[Get a free API key here](https://aistudio.google.com/app/apikey)")
 
-# --- Custom Tool: Python Executor ---
+# --- Tool Definition: The Python Sandbox ---
 def execute_python_code(code: str) -> str:
+    """Useful for running Python code to verify logic or math."""
     output = io.StringIO()
     try:
         sys.stdout = output
-        exec(code)
+        # Use a dictionary for local/global scope to keep the environment clean
+        exec(code, {})
         sys.stdout = sys.__stdout__
-        return output.getvalue() or "Executed successfully (No output)."
+        result = output.getvalue()
+        return result if result else "Executed successfully (no output)."
     except Exception as e:
         sys.stdout = sys.__stdout__
-        return f"Error: {str(e)}"
+        return f"Error encountered: {str(e)}"
 
-# --- Agent Logic ---
+# --- Agent Initialization ---
 if user_api_key:
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=user_api_key)
-    tools = [Tool(name="Python_REPL", func=execute_python_code, description="Run python code")]
-    agent = initialize_agent(tools, llm, agent="zero-shot-react-description", verbose=True)
+    try:
+        # 1. Initialize LLM
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-1.5-flash", 
+            google_api_key=user_api_key,
+            temperature=0
+        )
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+        # 2. Setup Tool
+        tools = [
+            Tool(
+                name="python_repl",
+                func=execute_python_code,
+                description="Executes python code. Input should be valid python code."
+            )
+        ]
 
-    for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(msg["content"])
+        # 3. Pull the standard ReAct prompt from LangChain Hub
+        prompt = hub.pull("hwchase17/react")
 
-    if prompt := st.chat_input():
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.chat_message("user").write(prompt)
+        # 4. Construct the ReAct agent
+        agent = create_react_agent(llm, tools, prompt)
 
-        with st.chat_message("assistant"):
-            # This captures the "Thinking" process and shows it in the UI
-            st_callback = st.container() 
-            response = agent.run(prompt)
-            st.write(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
+        # 5. Create the executor
+        agent_executor = AgentExecutor(
+            agent=agent, 
+            tools=tools, 
+            verbose=True, 
+            handle_parsing_errors=True
+        )
+
+        # --- Chat UI Logic ---
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        for msg in st.session_state.messages:
+            st.chat_message(msg["role"]).write(msg["content"])
+
+        if user_query := st.chat_input("Ask me to write and run a script..."):
+            st.session_state.messages.append({"role": "user", "content": user_query})
+            st.chat_message("user").write(user_query)
+
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking and coding..."):
+                    # Use .invoke() for the modern LangChain API
+                    response = agent_executor.invoke({"input": user_query})
+                    answer = response["output"]
+                    st.write(answer)
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+
+    except Exception as e:
+        st.error(f"Initialization Error: {e}")
 else:
-    st.info("Please add your Gemini API key in the sidebar to begin.")
+    st.warning("Please enter your Gemini API key in the sidebar to start.")
