@@ -2,22 +2,21 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
-# Import from langchain_classic to solve the ImportError
 from langchain_classic.agents import AgentExecutor, create_react_agent
-from langchain_classic import hub 
+from langchain_classic import hub
 from langchain_core.tools import Tool
 
 # --- Page Setup ---
 st.set_page_config(page_title="Agentic Coder", page_icon="💻")
 st.title("💻 Agentic Coder")
-st.markdown("An autonomous Python agent that writes and tests its own code.")
+st.markdown("An autonomous Python agent using Gemini 2.0 Flash.")
 
 # --- Sidebar: User API Key ---
 with st.sidebar:
     st.header("Settings")
     user_api_key = st.text_input("Enter Gemini API Key", type="password")
     st.info("Your key is used only for this session and is not stored.")
-    st.markdown("[Get a free API key here](https://aistudio.google.com)")
+    st.markdown("[Get a free API key here](https://aistudio.google.com/app/apikey)")
 
 # --- Tool Definition: The Python Sandbox ---
 def execute_python_code(code: str) -> str:
@@ -25,7 +24,6 @@ def execute_python_code(code: str) -> str:
     output = io.StringIO()
     try:
         sys.stdout = output
-        # Use a dictionary for local/global scope
         exec(code, {})
         sys.stdout = sys.__stdout__
         result = output.getvalue()
@@ -37,9 +35,9 @@ def execute_python_code(code: str) -> str:
 # --- Agent Initialization ---
 if user_api_key:
     try:
-        # 1. Initialize LLM with updated stable model alias
+        # 1. Initialize LLM with Gemini 2.0 (Fixes the 404 Error)
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash-latest", 
+            model="gemini-2.0-flash", # <--- Updated to current active model
             google_api_key=user_api_key,
             temperature=0
         )
@@ -61,9 +59,9 @@ if user_api_key:
 
         # 5. Create the executor
         agent_executor = AgentExecutor(
-            agent=agent, 
-            tools=tools, 
-            verbose=True, 
+            agent=agent,
+            tools=tools,
+            verbose=True,
             handle_parsing_errors=True
         )
 
