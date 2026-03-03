@@ -2,7 +2,7 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
-# Using langchain_classic to resolve the ImportError in newer LangChain versions
+# Importing from langchain_classic to handle the recent LangChain library split
 from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_classic import hub 
 from langchain_core.tools import Tool
@@ -10,7 +10,7 @@ from langchain_core.tools import Tool
 # --- Page Setup ---
 st.set_page_config(page_title="Agentic Coder", page_icon="💻")
 st.title("💻 Agentic Coder")
-st.markdown("An autonomous Python agent that writes and tests its own code.")
+st.markdown("An autonomous Python agent powered by Gemini 2.0.")
 
 # --- Sidebar: User API Key ---
 with st.sidebar:
@@ -25,7 +25,6 @@ def execute_python_code(code: str) -> str:
     output = io.StringIO()
     try:
         sys.stdout = output
-        # Execute in a clean global/local scope
         exec(code, {})
         sys.stdout = sys.__stdout__
         result = output.getvalue()
@@ -37,10 +36,9 @@ def execute_python_code(code: str) -> str:
 # --- Agent Initialization ---
 if user_api_key:
     try:
-        # 1. Initialize LLM
-        # Using gemini-1.5-flash which has better free-tier availability
+        # 1. Initialize LLM with an ACTIVE model (gemini-2.0-flash)
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", 
+            model="gemini-2.0-flash", 
             google_api_key=user_api_key,
             temperature=0
         )
@@ -54,21 +52,20 @@ if user_api_key:
             )
         ]
 
-        # 3. Pull the ReAct prompt from the [LangChain Hub](https://smith.langchain.com)
+        # 3. Pull the ReAct prompt
         prompt = hub.pull("hwchase17/react")
 
         # 4. Construct the ReAct agent
         agent = create_react_agent(llm, tools, prompt)
 
         # 5. Create the executor
-        # Added max_iterations=5 to prevent 429 errors from execution loops
+        # max_iterations prevents infinite loops from exhausting your quota
         agent_executor = AgentExecutor(
             agent=agent, 
             tools=tools, 
             verbose=True, 
             handle_parsing_errors=True,
-            max_iterations=5, 
-            early_stopping_method="generate"
+            max_iterations=10
         )
 
         # --- Chat UI Logic ---
@@ -85,14 +82,12 @@ if user_api_key:
             with st.chat_message("assistant"):
                 with st.spinner("Thinking and coding..."):
                     try:
-                        # Use .invoke() for modern LangChain Runnable interface
                         response = agent_executor.invoke({"input": user_query})
                         answer = response["output"]
                         st.write(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception as e:
-                        # Catch mid-execution 429 or tool errors
-                        st.error(f"Execution Error: {e}")
+                        st.error(f"Agent Error: {e}")
 
     except Exception as e:
         st.error(f"Initialization Error: {e}")
