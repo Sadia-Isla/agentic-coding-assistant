@@ -2,9 +2,11 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
+# Import everything moved to the classic package here
 from langchain_classic.agents import AgentExecutor, create_react_agent
+from langchain_classic import hub 
 from langchain_core.tools import Tool
-from langchain import hub
+
 
 # --- Page Setup ---
 st.set_page_config(page_title="Agentic Coder", page_icon="💻")
