@@ -2,8 +2,7 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.agents import create_react_agent
+from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_core.tools import Tool
 from langchain import hub
 
@@ -25,7 +24,7 @@ def execute_python_code(code: str) -> str:
     output = io.StringIO()
     try:
         sys.stdout = output
-        # Use a dictionary for local/global scope to keep the environment clean
+        # Use a dictionary for local/global scope
         exec(code, {})
         sys.stdout = sys.__stdout__
         result = output.getvalue()
@@ -80,7 +79,7 @@ if user_api_key:
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking and coding..."):
-                    # Use .invoke() for the modern LangChain API
+                    # Use .invoke() as per the [LangChain Runnable Interface](https://python.langchain.com)
                     response = agent_executor.invoke({"input": user_query})
                     answer = response["output"]
                     st.write(answer)
