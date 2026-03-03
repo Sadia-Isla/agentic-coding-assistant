@@ -3,3 +3,5 @@ langchain
 langchain-google-genai
 langchainhub
 langchain-community
+langchain-classic
+langchain-google-genai
