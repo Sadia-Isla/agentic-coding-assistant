@@ -1,23 +1,22 @@
 import streamlit as st
 import sys
 import io
-from langchain_google_genai import ChatGoogleGenerativeAI
-# Importing from langchain_classic to handle the recent LangChain library split
+from langchain_groq import ChatGroq
 from langchain_classic.agents import AgentExecutor, create_react_agent
-from langchain_classic import hub 
+from langchain_classic import hub
 from langchain_core.tools import Tool
 
 # --- Page Setup ---
-st.set_page_config(page_title="Agentic Coder", page_icon="💻")
-st.title("💻 Agentic Coder")
-st.markdown("An autonomous Python agent powered by Gemini 2.0.")
+st.set_page_config(page_title="Agentic Coder (Groq Edition)", page_icon="⚡")
+st.title("⚡ Agentic Coder (Groq Edition)")
+st.markdown("An autonomous Python agent powered by ultra-fast Llama-3-70b.")
 
 # --- Sidebar: User API Key ---
 with st.sidebar:
     st.header("Settings")
-    user_api_key = st.text_input("Enter Gemini API Key", type="password")
-    st.info("Your key is used only for this session and is not stored.")
-    st.markdown("[Get a free API key here](https://aistudio.google.com/app/apikey)")
+    # Change prompt to Groq API Key
+    user_api_key = st.text_input("Enter Groq API Key", type="password")
+    st.info("Get a free key from the [Groq Console](https://console.groq.com/keys).")
 
 # --- Tool Definition: The Python Sandbox ---
 def execute_python_code(code: str) -> str:
@@ -36,10 +35,11 @@ def execute_python_code(code: str) -> str:
 # --- Agent Initialization ---
 if user_api_key:
     try:
-        # 1. Initialize LLM with an ACTIVE model (gemini-2.0-flash)
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash", 
-            google_api_key=user_api_key,
+        # 1. Initialize Groq LLM (Replacing Gemini)
+        # Llama-3-70b is great for coding and complex logic
+        llm = ChatGroq(
+            model="llama3-70b-8192",
+            groq_api_key=user_api_key,
             temperature=0
         )
 
@@ -59,11 +59,11 @@ if user_api_key:
         agent = create_react_agent(llm, tools, prompt)
 
         # 5. Create the executor
-        # max_iterations prevents infinite loops from exhausting your quota
+        # Added max_iterations=10 to prevent infinite loops
         agent_executor = AgentExecutor(
-            agent=agent, 
-            tools=tools, 
-            verbose=True, 
+            agent=agent,
+            tools=tools,
+            verbose=True,
             handle_parsing_errors=True,
             max_iterations=10
         )
@@ -80,7 +80,7 @@ if user_api_key:
             st.chat_message("user").write(user_query)
 
             with st.chat_message("assistant"):
-                with st.spinner("Thinking and coding..."):
+                with st.spinner("Thinking and coding with Groq..."):
                     try:
                         response = agent_executor.invoke({"input": user_query})
                         answer = response["output"]
@@ -92,4 +92,4 @@ if user_api_key:
     except Exception as e:
         st.error(f"Initialization Error: {e}")
 else:
-    st.warning("Please enter your Gemini API key in the sidebar to start.")
+    st.warning("Please enter your Groq API key in the sidebar to start.")
