@@ -2,7 +2,7 @@ import streamlit as st
 import sys
 import io
 from langchain_google_genai import ChatGoogleGenerativeAI
-# Using langchain_classic to maintain compatibility with AgentExecutor and create_react_agent
+# Import from langchain_classic to solve the ImportError
 from langchain_classic.agents import AgentExecutor, create_react_agent
 from langchain_classic import hub 
 from langchain_core.tools import Tool
@@ -25,7 +25,7 @@ def execute_python_code(code: str) -> str:
     output = io.StringIO()
     try:
         sys.stdout = output
-        # Use a dictionary for local/global scope to keep the environment clean
+        # Use a dictionary for local/global scope
         exec(code, {})
         sys.stdout = sys.__stdout__
         result = output.getvalue()
@@ -37,9 +37,9 @@ def execute_python_code(code: str) -> str:
 # --- Agent Initialization ---
 if user_api_key:
     try:
-        # 1. Initialize LLM - Using gemini-1.5-flash (Ensure the langchain-google-genai package is updated)
+        # 1. Initialize LLM with updated stable model alias
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash", 
+            model="gemini-1.5-flash-latest", 
             google_api_key=user_api_key,
             temperature=0
         )
@@ -53,7 +53,7 @@ if user_api_key:
             )
         ]
 
-        # 3. Pull the standard ReAct prompt from LangChain Hub via classic package
+        # 3. Pull the standard ReAct prompt
         prompt = hub.pull("hwchase17/react")
 
         # 4. Construct the ReAct agent
@@ -80,7 +80,6 @@ if user_api_key:
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking and coding..."):
-                    # Use .invoke() for the modern LangChain API interface
                     response = agent_executor.invoke({"input": user_query})
                     answer = response["output"]
                     st.write(answer)
